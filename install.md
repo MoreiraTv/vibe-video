@@ -1,6 +1,6 @@
 ---
 name: vibe-video-install
-description: Install vibe-video into the current agent (Claude Code, Codex, Hermes, Openclaw, etc.) and wire up ffmpeg + faster-whisper so the user can start editing immediately.
+description: Install vibe-video into the current agent (Claude Code, Codex, Hermes, Openclaw, etc.) and wire up ffmpeg plus either faster-whisper or ElevenLabs transcription so the user can start editing immediately.
 ---
 
 # vibe-video install
@@ -14,8 +14,8 @@ You're setting up a conversation-driven video editor for the user. After install
 Three things must exist on this machine:
 
 1. The `vibe-video` repo cloned somewhere stable.
-2. `ffmpeg` on `$PATH` (plus optional `yt-dlp` for online sources).
-3. Python environment with `faster-whisper` (for local transcription).
+2. `ffmpeg` on `$PATH` (plus optional `yt-dlp` for online sources and optional `streamlink` for live monitoring).
+3. Python environment with `faster-whisper` (for local transcription) or an ElevenLabs API key in `.env` (for cloud transcription).
 
 And one thing must be true about the current agent:
 
@@ -48,21 +48,24 @@ command -v uv >/dev/null && uv sync || pip install -e .
 
 `pyproject.toml` lists `faster-whisper`, `requests`, `librosa`, `matplotlib`, `pillow`, `numpy`. No console scripts — helpers are invoked directly as `python helpers/<name>.py`.
 
+If the user's machine is too weak for local transcription, create `.env` from `.env.example`, set `VIBE_VIDEO_TRANSCRIBE_PROVIDER=elevenlabs`, and add `ELEVENLABS_API_KEY=...`.
+
 ### 3. Install ffmpeg (+ optional yt-dlp)
 
-`ffmpeg` and `ffprobe` are hard requirements. `yt-dlp` is only needed if the user wants to pull sources from URLs. Animation engines such as HyperFrames, Remotion, and Manim are installed lazily the first time a project actually needs them.
+`ffmpeg` and `ffprobe` are hard requirements. `yt-dlp` is only needed if the user wants to pull sources from URLs. `streamlink` is needed only if the user wants to monitor Kick/Twitch/YouTube lives. Animation engines such as HyperFrames, Remotion, and Manim are installed lazily the first time a project actually needs them.
 
 ```bash
 # macOS
 command -v ffmpeg >/dev/null || brew install ffmpeg
 command -v yt-dlp >/dev/null || brew install yt-dlp     # optional
+command -v streamlink >/dev/null || brew install streamlink  # optional
 
 # Debian / Ubuntu
-# sudo apt-get update && sudo apt-get install -y ffmpeg
+# sudo apt-get update && sudo apt-get install -y ffmpeg streamlink
 # pip install yt-dlp
 
 # Arch
-# sudo pacman -S ffmpeg yt-dlp
+# sudo pacman -S ffmpeg streamlink yt-dlp
 ```
 
 If `brew` / `apt` / `pacman` requires a sudo prompt, tell the user the exact command and wait. Do not invent a password.

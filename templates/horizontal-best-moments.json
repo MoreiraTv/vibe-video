@@ -1,0 +1,29 @@
+{
+  "id": "horizontal-best-moments",
+  "extends": "vertical-gameplay-facecam",
+  "label": "Horizontal Best Moments",
+  "description": "Traditional 16:9 highlight workflow for YouTube and compilations.",
+  "defaults": {
+    "goal": "best_moments",
+    "split_mode": "single_video",
+    "aspect_ratio": "16:9",
+    "layout_style": "single-focus-crop",
+    "facecam_position": "auto",
+    "background_style": "clean-fill",
+    "title_mode": "none",
+    "logo_mode": "none",
+    "tracking_enabled": false,
+    "tracking_mode": "stage",
+    "silence_policy": "visual",
+    "must_preserve_reactions": true,
+    "pacing": "balanced",
+    "subtitle_position": "bottom",
+    "subtitle_grouping": "natural",
+    "subtitle_style": "plain",
+    "subtitle_highlight_color": "none",
+    "subtitle_outline": "medium",
+    "subtitle_font": "cinematic-bold",
+    "subtitle_case": "natural",
+    "grade_preset": "auto"
+  }
+}

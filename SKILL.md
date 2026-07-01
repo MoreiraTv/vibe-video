@@ -8,7 +8,7 @@ description: Edit any video by conversation. Transcribe, cut, color grade, gener
 ## Principle
 
 1. **LLM reasons from raw transcript + on-demand visuals.** The only derived artifact that earns its keep is a packed phrase-level transcript (`takes_packed.md`). Everything else — filler tagging, retake detection, shot classification, emphasis scoring — you derive at decision time.
-2. **Audio is primary, visuals follow.** Cut candidates come from speech boundaries and silence gaps. Drill into visuals only at decision points.
+2. **Audio is primary, visuals arbitrate silence.** Speech boundaries create the first cut candidates, but silent beats should be preserved whenever the user wants them or the picture is still doing work. Drill into visuals at those decision points.
 3. **Ask → confirm → execute → iterate → persist.** Never touch the cut until the user has confirmed the strategy in plain English.
 4. **Generalize.** Do not assume what kind of video this is. Look at the material, ask the user, then edit.
 5. **Artistic freedom is the default.** Every specific value, preset, font, color, duration, pitch structure, and technique in this document is a *worked example* from one proven video — not a mandate. Read them to understand what's possible and why each worked. Then make your own taste calls based on what the material actually is and what the user actually wants. **The only things you MUST do are in the Hard Rules section below.** Everything else is yours.
@@ -24,7 +24,7 @@ These are the things where deviation produces silent failures or broken output. 
 3. **30ms audio fades at every segment boundary** (`afade=t=in:st=0:d=0.03,afade=t=out:st={dur-0.03}:d=0.03`). Otherwise audible pops at every cut.
 4. **Overlays use `setpts=PTS-STARTPTS+T/TB`** to shift the overlay's frame 0 to its window start. Otherwise you see the middle of the animation during the overlay window.
 5. **Master SRT uses output-timeline offsets**: `output_time = word.start - segment_start + segment_offset`. Otherwise captions misalign after segment concat.
-6. **Never cut inside a word.** Snap every cut edge to a word boundary from the faster-whisper transcript.
+6. **Never cut inside a word.** Snap every cut edge to a word boundary from the transcript, whether it came from local faster-whisper or ElevenLabs.
 7. **Pad every cut edge.** Working window: 30–200ms. Whisper timestamps drift 50–100ms — padding absorbs the drift. Tighter for fast-paced, looser for cinematic.
 8. **Word-level verbatim ASR only.** Never SRT/phrase mode (loses sub-second gap data). Never normalized fillers (loses editorial signal).
 9. **Cache transcripts per source.** Never re-transcribe unless the source file itself changed.
@@ -59,7 +59,7 @@ The skill lives in `vibe-video/`. User footage lives wherever they put it. All s
 
 First-time install lives in `install.md` (clone, deps, ffmpeg, skill registration). Don't re-run it every session; on cold start just verify:
 
-- `faster-whisper` installed locally.
+- `faster-whisper` installed locally, or `ELEVENLABS_API_KEY` configured in `.env` for cloud transcription.
 - `ffmpeg` + `ffprobe` on PATH.
 - Python deps installed (`uv sync` or `pip install -e .` inside the repo).
 - Node.js + npm available if the session needs HyperFrames or Remotion slots. HyperFrames currently requires Node.js 22+.
@@ -71,13 +71,17 @@ Helpers (`helpers/transcribe.py`, `helpers/render.py`, etc.) live alongside this
 
 ## Helpers
 
-- **`transcribe.py <video>`** — single-file faster-whisper call. Use `--model large-v3-turbo` (default) for offline transcription. Cached.
-- **`transcribe_batch.py <videos_dir>`** — sequential transcription (1-worker default to avoid OOM). Use for multi-take.
+- **`transcribe.py <video>`** — single-file transcription. Default is local faster-whisper; supports `--provider elevenlabs` or `.env` `VIBE_VIDEO_TRANSCRIBE_PROVIDER=elevenlabs`. Cached.
+- **`transcribe_batch.py <videos_dir>`** — batch transcription (1-worker default to avoid OOM locally). Supports the same provider switch.
 - **`pack_transcripts.py --edit-dir <dir>`** — `transcripts/*.json` → `takes_packed.md` (phrase-level, break on silence ≥ 0.5s).
+- **`build_edl.py --edit-dir <dir> --silence-policy <audio|keep|visual>`** — starter EDL builder with configurable silence handling. `visual` keeps a silent gap when the picture still shows motion/reaction.
 - **`timeline_view.py <video> <start> <end>`** — filmstrip + waveform PNG. On-demand visual drill-down. **Not a scan tool** — use it at decision points, not constantly.
 - **`track_speaker.py <video> --mode <stage|podcast> --stride <N>`** — Active Speaker Tracking (YOLOv11 + EMA). Outputs `edit/<video>_tracking.json`. Use to dynamically crop 16:9 to vertical 9:16 keeping the speaker centered. Mode `stage` is for a moving speaker (Virtual PTZ). Mode `podcast` for switching between seated speakers. Uses a default `--stride 5` to skip frames and accelerate processing (EMA handles smoothing). Use `--stride 8` or higher if running on CPU-only to save time.
 - **`render.py <edl.json> -o <out>`** — per-segment extract → concat → overlays (PTS-shifted) → subtitles LAST. `--preview` for 720p fast. `--build-subtitles` to generate master.srt inline.
 - **`grade.py <in> -o <out>`** — ffmpeg filter chain grade. Presets + `--filter '<raw>'` for custom.
+- **`live_monitor.py <command>`** — persistent live monitoring via Streamlink + FFmpeg. Use `start` to launch a background session with continuous transcription, `list`/`show` to find session IDs, `read` to inspect the saved transcript buffer file, and `stop`/`delete` to manage sessions.
+- **`templates.py <command>`** — list templates, inspect them, create a reusable template from an existing `edit/`, or apply a saved `template_setup.json` onto an `edl.json`.
+- **`template_wizard.py <template_id> --edit-dir <dir>`** — guided setup wizard that collects template answers, saves `template_setup.json`, and remembers defaults in `template_defaults.json`.
 
 For animations, create `<edit>/animations/slot_<id>/` with `Bash` and spawn a sub-agent via the `Agent` tool.
 
@@ -86,6 +90,9 @@ For animations, create `<edit>/animations/slot_<id>/` with `Bash` and spawn a su
 1. **Inventory.** `ffprobe` every source. `transcribe_batch.py` on the directory. `pack_transcripts.py` to produce `takes_packed.md`. Sample one or two `timeline_view`s for a visual first impression.
 2. **Pre-scan for problems.** One pass over `takes_packed.md` to note verbal slips, obvious mis-speaks, or phrasings to avoid. Plain list, feed into the editor brief.
 3. **Converse.** Describe what you see in plain English. Ask questions *shaped by the material*. Collect: content type, target length/aspect, aesthetic/brand direction, pacing feel, must-preserve moments, must-cut moments, animation and grade preferences, subtitle needs. 
+   - If the user is clearly asking for a known format or repeatable workflow, prefer starting with `template_wizard.py` before freeform planning.
+   - Treat the template as a starting brief, not a lock. After setup, the user can still override anything by conversation.
+   - **Required silence question:** Ask whether silent stretches are allowed to be cut. If the user says no, preserve them. If the user says yes, prefer a visual check before removing them because reactions, gestures, searches, or gameplay focus can still matter on camera.
    - **CRITICAL NEW PROJECT RULE:** Whenever starting a new project with a new video, you MUST ask the user if they want to use the **Active Speaker Tracking (`track_speaker.py`)** feature to keep the camera focused on the speaker (highly recommended for converting to vertical formats). If they say yes, ask if they want to use **"Câmera PTZ (Tracking de Palco)"** (for a single moving person) or **"Corte Seco/Podcast"** (for multiple seated people).
 4. **Propose strategy.** 4–8 sentences: shape, take choices, cut direction, animation plan, grade direction, subtitle style, length estimate. **Wait for confirmation.**
 5. **Execute.** Produce `edl.json` via the editor sub-agent brief. Drill into `timeline_view` at ambiguous moments. Build animations in parallel sub-agents. Apply grade per-segment. Compose via `render.py`.
@@ -103,11 +110,11 @@ For animations, create `<edit>/animations/slot_<id>/` with `Bash` and spawn a su
 
 ## Cut craft (techniques)
 
-- **Audio-first.** Candidate cuts from word boundaries and silence gaps.
+- **Audio-first.** Candidate cuts come from word boundaries first; silence is a policy decision, not an automatic delete.
 - **Preserve peaks.** Laughs, punchlines, emphasis beats. Extend past punchlines to include reactions — the laugh IS the beat.
 - **Speaker handoffs** benefit from air between utterances. Common values: 400–600ms. Less for fast-paced, more for cinematic. Taste call.
 - **Audio events as signals.** `(laughs)`, `(sighs)`, `(applause)` mark beats. Extend past them.
-- **Silence gaps are cut candidates.** Silences ≥400ms are usually the cleanest. 150–400ms phrase boundaries are usable with a visual check. <150ms is unsafe (mid-phrase).
+- **Silence gaps are conditional cut candidates.** Silences ≥400ms are often clean, but do not auto-remove them if the user wants to preserve pauses or the picture still carries reaction, gesture, stage business, gameplay tension, or a meaningful search beat. 150–400ms phrase boundaries are usable with a visual check. <150ms is unsafe (mid-phrase).
 - **Example cut padding** (the launch video shipped with this): 50ms before the first kept word, 80ms after the last. Tighter for montage energy, looser for documentary. Stay in the 30–200ms working window (Hard Rule 7).
 - **Never reason audio and video independently.** Every cut must work on both tracks.
 
@@ -150,7 +157,8 @@ Common structural archetypes (pick, adapt, or invent):
 RULES:
   - Start/end times must fall on word boundaries from the transcript.
   - Pad cut boundaries (working window 30–200ms).
-  - Prefer silences ≥ 400ms as cut targets.
+  - Prefer silences ≥ 400ms as cut targets only when the user wants silence trimming.
+  - If silence trimming is enabled, visually check the gap or use `build_edl.py --silence-policy visual` before deleting a quiet beat.
   - Unavoidable slips are kept if no better take exists. Note them in "reason".
   - If over budget, revise: drop a beat or trim tails. Report total and self-correct.
 

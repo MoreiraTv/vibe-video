@@ -3,6 +3,7 @@ import json
 import os
 import subprocess
 import tempfile
+from types import SimpleNamespace
 from pathlib import Path
 
 try:
@@ -10,8 +11,22 @@ try:
     import torch
     from ultralytics import YOLO
 except ImportError:
-    print("Error: ultralytics, torch or opencv-python not installed. Please install them or run `uv sync`")
-    exit(1)
+    cv2 = SimpleNamespace(
+        VideoCapture=None,
+        CAP_PROP_FPS=5,
+        CAP_PROP_FRAME_COUNT=7,
+        CAP_PROP_FRAME_WIDTH=3,
+        CAP_PROP_FRAME_HEIGHT=4,
+    )
+    torch = SimpleNamespace(cuda=SimpleNamespace(is_available=lambda: False))
+    YOLO = None
+
+
+def ensure_tracking_deps() -> None:
+    if YOLO is None or getattr(cv2, "VideoCapture", None) is None:
+        raise ImportError(
+            "ultralytics, torch or opencv-python not installed. Please install them or run `uv sync`"
+        )
 
 def apply_ema(values, alpha=0.05):
     """Applies Exponential Moving Average (EMA) for cinematic smoothing."""
@@ -24,6 +39,7 @@ def apply_ema(values, alpha=0.05):
 
 def track_stage(video_path: Path, output_json: Path, alpha: float = 0.05, stride: int = 1):
     """Tracks the most prominent person on stage and applies cinematic smoothing."""
+    ensure_tracking_deps()
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Loading YOLOv11 model on device '{device}' for stage tracking on {video_path}...")
     
@@ -191,6 +207,7 @@ def track_stage(video_path: Path, output_json: Path, alpha: float = 0.05, stride
 
 def track_podcast(video_path: Path, output_json: Path, alpha: float = 0.2, stride: int = 1):
     """Tracks active speakers in podcast format by dynamically focusing on the most prominent person in each frame."""
+    ensure_tracking_deps()
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Loading YOLOv11 model on device '{device}' for podcast tracking on {video_path}...")
     

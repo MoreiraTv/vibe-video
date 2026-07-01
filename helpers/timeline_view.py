@@ -15,13 +15,14 @@ Usage:
     python helpers/timeline_view.py <video> <start> <end> -o out.png
     python helpers/timeline_view.py <video> <start> <end> --n-frames 12
     python helpers/timeline_view.py <video> <start> <end> --transcript <path>
-    python helpers/timeline_view.py --edl <edl.json>   (full-project view — not yet)
+    python helpers/timeline_view.py --edl <edl.json>
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -179,6 +180,13 @@ DIM = (110, 110, 120)
 ACCENT = (255, 140, 60)
 SILENCE = (50, 80, 120, 120)  # muted blue, semi-transparent
 WAVE = (140, 180, 255)
+SOURCE_SWATCHES = [
+    (255, 140, 60),
+    (90, 190, 255),
+    (120, 220, 140),
+    (255, 205, 90),
+    (230, 120, 210),
+]
 
 
 def render_timeline(
@@ -330,6 +338,117 @@ def render_timeline(
         print(f"saved: {out_path}  ({out_path.stat().st_size // 1024} KB)")
 
 
+def segment_offsets(edl: dict) -> list[dict]:
+    offsets: list[dict] = []
+    cursor = 0.0
+    for segment in edl.get("ranges", []):
+        duration = float(segment["end"]) - float(segment["start"])
+        offsets.append(
+            {
+                **segment,
+                "output_start": cursor,
+                "output_end": cursor + duration,
+                "duration": duration,
+            }
+        )
+        cursor += duration
+    return offsets
+
+
+def _fit_text(text: str, limit: int = 28) -> str:
+    text = re.sub(r"\s+", " ", text).strip()
+    if len(text) <= limit:
+        return text
+    return text[: limit - 1].rstrip() + "..."
+
+
+def render_edl_overview(edl: dict, out_path: Path) -> None:
+    segments = segment_offsets(edl)
+    total_duration = max(float(edl.get("total_duration_s") or 0.0), sum(seg["duration"] for seg in segments))
+    if total_duration <= 0:
+        total_duration = 1.0
+
+    canvas_width = 2000
+    canvas_height = 760
+    left = 80
+    right = canvas_width - 80
+    timeline_y = 170
+    bar_h = 84
+    overlay_y = 360
+    overlay_h = 36
+    footer_y = 520
+
+    canvas = Image.new("RGB", (canvas_width, canvas_height), BG)
+    draw = ImageDraw.Draw(canvas, "RGBA")
+    header_font = load_font(28)
+    label_font = load_font(16)
+    small_font = load_font(13)
+
+    draw.text((left, 35), "EDL overview", fill=FG, font=header_font)
+    draw.text(
+        (left, 75),
+        f"segments: {len(segments)}   overlays: {len(edl.get('overlays') or [])}   total: {total_duration:.2f}s",
+        fill=DIM,
+        font=label_font,
+    )
+
+    draw.rectangle((left, timeline_y, right, timeline_y + bar_h), fill=(28, 28, 34), outline=(60, 60, 70))
+
+    source_names = sorted({segment["source"] for segment in segments})
+    swatches = {name: SOURCE_SWATCHES[idx % len(SOURCE_SWATCHES)] for idx, name in enumerate(source_names)}
+
+    def time_to_x(value: float) -> int:
+        frac = max(0.0, min(1.0, value / total_duration))
+        return int(left + frac * (right - left))
+
+    for idx, segment in enumerate(segments, start=1):
+        x0 = time_to_x(segment["output_start"])
+        x1 = max(x0 + 2, time_to_x(segment["output_end"]))
+        fill = swatches[segment["source"]]
+        draw.rounded_rectangle((x0, timeline_y, x1, timeline_y + bar_h), radius=8, fill=fill)
+        draw.text((x0 + 8, timeline_y + 10), f"{idx:02d} {segment['source']}", fill=BG, font=label_font)
+        label = segment.get("beat") or segment.get("quote") or ""
+        if label:
+            draw.text((x0 + 8, timeline_y + 38), _fit_text(label), fill=BG, font=small_font)
+        if idx < len(segments):
+            cut_x = x1
+            draw.line((cut_x, timeline_y - 10, cut_x, timeline_y + bar_h + 10), fill=FG, width=1)
+
+    draw.text((left, overlay_y - 34), "overlays", fill=FG, font=label_font)
+    draw.rectangle((left, overlay_y, right, overlay_y + overlay_h), fill=(24, 24, 28), outline=(60, 60, 70))
+    for overlay in edl.get("overlays") or []:
+        start = float(overlay["start_in_output"])
+        end = start + float(overlay["duration"])
+        x0 = time_to_x(start)
+        x1 = max(x0 + 2, time_to_x(end))
+        draw.rounded_rectangle((x0, overlay_y, x1, overlay_y + overlay_h), radius=6, fill=ACCENT)
+        draw.text((x0 + 6, overlay_y + 9), _fit_text(Path(overlay["file"]).stem, 20), fill=BG, font=small_font)
+
+    draw.text((left, footer_y - 30), "source legend", fill=FG, font=label_font)
+    legend_x = left
+    legend_y = footer_y
+    for source in source_names:
+        fill = swatches[source]
+        draw.rounded_rectangle((legend_x, legend_y, legend_x + 22, legend_y + 22), radius=5, fill=fill)
+        draw.text((legend_x + 30, legend_y + 2), source, fill=FG, font=label_font)
+        legend_x += 180
+
+    tick_y = timeline_y + bar_h + 18
+    for tick in range(7):
+        frac = tick / 6
+        t = total_duration * frac
+        x = int(left + frac * (right - left))
+        draw.line((x, tick_y, x, tick_y + 8), fill=DIM, width=1)
+        draw.text((x - 18, tick_y + 12), f"{t:.1f}s", fill=DIM, font=small_font)
+
+    if edl.get("subtitles"):
+        draw.text((left, overlay_y + 70), f"subtitles: {edl['subtitles']}", fill=DIM, font=label_font)
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    canvas.save(out_path, "PNG", optimize=True)
+    print(f"saved: {out_path}  ({out_path.stat().st_size // 1024} KB)")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Filmstrip + waveform composite for a video range")
     ap.add_argument("video", type=Path, nargs="?", help="Source video")
@@ -348,12 +467,22 @@ def main() -> None:
         "--edl",
         type=Path,
         default=None,
-        help="(Not yet implemented) Render a full-project timeline from an EDL",
+        help="Render a full-project timeline from an EDL",
     )
     args = ap.parse_args()
 
     if args.edl:
-        sys.exit("--edl mode is not implemented yet; use range mode")
+        edl_path = args.edl.resolve()
+        if not edl_path.exists():
+            sys.exit(f"edl not found: {edl_path}")
+        edl = json.loads(edl_path.read_text(encoding="utf-8"))
+        out_path = args.output
+        if out_path is None:
+            out_dir = edl_path.parent / "verify"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            out_path = out_dir / "edl_overview.png"
+        render_edl_overview(edl, out_path.resolve())
+        return
 
     if not args.video or args.start is None or args.end is None:
         ap.error("video, start, and end are required")

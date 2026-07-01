@@ -1,0 +1,29 @@
+{
+  "id": "speaker-vertical",
+  "extends": "vertical-gameplay-facecam",
+  "label": "Speaker Vertical",
+  "description": "Vertical speaking-head format for talks, stage messages, lessons, and on-camera guidance without locking the template to one niche.",
+  "defaults": {
+    "goal": "best_moments",
+    "split_mode": "multi_clip",
+    "aspect_ratio": "9:16",
+    "layout_style": "single-focus-crop",
+    "facecam_position": "auto",
+    "background_style": "blur-fill",
+    "title_mode": "auto_suggest",
+    "logo_mode": "none",
+    "tracking_enabled": true,
+    "tracking_mode": "stage",
+    "silence_policy": "keep",
+    "must_preserve_reactions": true,
+    "pacing": "natural",
+    "subtitle_position": "center",
+    "subtitle_grouping": "natural",
+    "subtitle_style": "bold",
+    "subtitle_highlight_color": "yellow",
+    "subtitle_outline": "medium",
+    "subtitle_font": "cinematic-bold",
+    "subtitle_case": "natural",
+    "grade_preset": "auto"
+  }
+}

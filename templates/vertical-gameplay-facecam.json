@@ -1,0 +1,257 @@
+{
+  "id": "vertical-gameplay-facecam",
+  "label": "Vertical Gameplay Facecam",
+  "description": "Short-form vertical setup for gameplay, streams, and reaction clips with gameplay plus facecam framing.",
+  "defaults": {
+    "goal": "best_moments",
+    "split_mode": "multi_clip",
+    "aspect_ratio": "9:16",
+    "layout_style": "gameplay-facecam-stack",
+    "facecam_position": "bottom",
+    "background_style": "clean-fill",
+    "title_mode": "auto_suggest",
+    "logo_mode": "none",
+    "tracking_enabled": true,
+    "tracking_mode": "vlog",
+    "silence_policy": "visual",
+    "must_preserve_reactions": true,
+    "pacing": "high-energy",
+    "subtitle_position": "center",
+    "subtitle_grouping": "3",
+    "subtitle_style": "karaoke",
+    "subtitle_highlight_color": "yellow",
+    "subtitle_outline": "strong",
+    "subtitle_font": "impact-social",
+    "subtitle_case": "uppercase",
+    "grade_preset": "auto"
+  },
+  "questions": [
+    {
+      "id": "goal",
+      "section": "Goal",
+      "type": "choice",
+      "prompt": "What should this gameplay edit produce?",
+      "choices": [
+        {"value": "best_moments", "label": "Best moments", "description": "Find the strongest highlights and cut for impact."},
+        {"value": "single_compilation", "label": "Single compilation", "description": "One stitched vertical video."},
+        {"value": "multi_clip", "label": "Multiple clips", "description": "Split into separate clips or parts."}
+      ]
+    },
+    {
+      "id": "split_mode",
+      "section": "Goal",
+      "type": "choice",
+      "prompt": "How should the output be delivered?",
+      "choices": [
+        {"value": "multi_clip", "label": "Separate clips", "description": "Best for Shorts/Reels batches."},
+        {"value": "multi_part", "label": "Part 1/2/3", "description": "Series style output."},
+        {"value": "single_video", "label": "One final video", "description": "Keep everything in one render."}
+      ]
+    },
+    {
+      "id": "aspect_ratio",
+      "section": "Format",
+      "type": "choice",
+      "prompt": "What canvas should the agent target?",
+      "choices": [
+        {"value": "9:16", "label": "9:16 vertical", "description": "Short-form social default."},
+        {"value": "1:1", "label": "1:1 square", "description": "Square social crop."},
+        {"value": "16:9", "label": "16:9 horizontal", "description": "Fallback if vertical is not desired."}
+      ]
+    },
+    {
+      "id": "layout_style",
+      "section": "Layout",
+      "type": "choice",
+      "prompt": "Which layout should the agent use?",
+      "choices": [
+        {"value": "gameplay-facecam-stack", "label": "Gameplay + facecam stack", "description": "One panel for the game and one for the streamer."},
+        {"value": "center-blur-bg", "label": "Center with blurred background", "description": "Keep the main crop centered over a blurred fill."},
+        {"value": "single-focus-crop", "label": "Single focus crop", "description": "One tracked crop without split panels."}
+      ]
+    },
+    {
+      "id": "facecam_position",
+      "section": "Layout",
+      "type": "choice",
+      "prompt": "Where should the facecam sit when a stacked layout is used?",
+      "choices": [
+        {"value": "bottom", "label": "Bottom", "description": "Gameplay on top, facecam below."},
+        {"value": "top", "label": "Top", "description": "Facecam on top, gameplay below."},
+        {"value": "auto", "label": "Auto", "description": "Let the agent decide from the footage."}
+      ]
+    },
+    {
+      "id": "background_style",
+      "section": "Layout",
+      "type": "choice",
+      "prompt": "What should the unused background area look like?",
+      "choices": [
+        {"value": "clean-fill", "label": "Clean fill", "description": "Simple clean background or crop fill."},
+        {"value": "blur-fill", "label": "Blur fill", "description": "Zoomed blurred background copy."},
+        {"value": "gameplay-extended", "label": "Extended gameplay", "description": "Use gameplay itself to fill the frame."}
+      ]
+    },
+    {
+      "id": "title_mode",
+      "section": "Branding",
+      "type": "choice",
+      "prompt": "How should title or hook text be handled?",
+      "choices": [
+        {"value": "auto_suggest", "label": "Auto suggest", "description": "The agent proposes headline options."},
+        {"value": "manual", "label": "Manual title", "description": "The operator will provide the title."},
+        {"value": "none", "label": "No title", "description": "No title card or banner."}
+      ]
+    },
+    {
+      "id": "logo_mode",
+      "section": "Branding",
+      "type": "choice",
+      "prompt": "Should the edit include a logo or channel mark?",
+      "choices": [
+        {"value": "none", "label": "No logo", "description": "Keep it clean."},
+        {"value": "corner_bug", "label": "Corner logo", "description": "Small persistent logo."},
+        {"value": "intro_outro_only", "label": "Intro/outro only", "description": "Branding only at open/close."}
+      ]
+    },
+    {
+      "id": "tracking_enabled",
+      "section": "Tracking",
+      "type": "boolean",
+      "prompt": "Should the agent use active speaker or subject tracking when cropping vertical?"
+    },
+    {
+      "id": "tracking_mode",
+      "section": "Tracking",
+      "type": "choice",
+      "prompt": "Which tracking mode fits this source best?",
+      "choices": [
+        {"value": "vlog", "label": "Vlog", "description": "Moving subject or hand-held framing."},
+        {"value": "stage", "label": "Stage", "description": "One subject moving around a scene."},
+        {"value": "podcast", "label": "Podcast", "description": "Switch between seated speakers."}
+      ]
+    },
+    {
+      "id": "silence_policy",
+      "section": "Editing",
+      "type": "choice",
+      "prompt": "How should silence be treated during cutting?",
+      "choices": [
+        {"value": "visual", "label": "Visual check", "description": "Keep silent beats when the picture still matters."},
+        {"value": "audio", "label": "Audio only", "description": "Aggressively cut by speech timing."},
+        {"value": "keep", "label": "Always keep", "description": "Do not auto-cut silent beats."}
+      ]
+    },
+    {
+      "id": "must_preserve_reactions",
+      "section": "Editing",
+      "type": "boolean",
+      "prompt": "Should reaction faces and visual beats be preserved even if speech drops out?"
+    },
+    {
+      "id": "pacing",
+      "section": "Editing",
+      "type": "choice",
+      "prompt": "What pacing should the agent aim for?",
+      "choices": [
+        {"value": "high-energy", "label": "High energy", "description": "Fast, punchy, social-first."},
+        {"value": "balanced", "label": "Balanced", "description": "Energetic but readable."},
+        {"value": "natural", "label": "Natural", "description": "Less aggressive, more breathing room."}
+      ]
+    },
+    {
+      "id": "subtitle_position",
+      "section": "Subtitles",
+      "type": "choice",
+      "prompt": "Where should subtitles sit?",
+      "choices": [
+        {"value": "top", "label": "Top", "description": "Near the top safe area."},
+        {"value": "center", "label": "Center", "description": "Middle of frame for strong social style."},
+        {"value": "bottom", "label": "Bottom", "description": "Lower safe area."}
+      ]
+    },
+    {
+      "id": "subtitle_grouping",
+      "section": "Subtitles",
+      "type": "choice",
+      "prompt": "How should subtitle phrases be grouped?",
+      "choices": [
+        {"value": "2", "label": "2 words", "description": "Fast, punchy social rhythm."},
+        {"value": "3", "label": "3 words", "description": "Balanced readability."},
+        {"value": "4", "label": "4 words", "description": "Longer reading chunks."},
+        {"value": "5", "label": "5 words", "description": "More context per line."},
+        {"value": "natural", "label": "Natural phrases", "description": "Break on speech rhythm and punctuation."}
+      ]
+    },
+    {
+      "id": "subtitle_style",
+      "section": "Subtitles",
+      "type": "choice",
+      "prompt": "Which subtitle style should the agent prepare for?",
+      "choices": [
+        {"value": "karaoke", "label": "Karaoke", "description": "Highlight words progressively during speech."},
+        {"value": "bold", "label": "Bold social", "description": "Strong outlined captions without karaoke fill."},
+        {"value": "plain", "label": "Plain", "description": "Cleaner caption style."}
+      ]
+    },
+    {
+      "id": "subtitle_highlight_color",
+      "section": "Subtitles",
+      "type": "choice",
+      "prompt": "What highlight color should karaoke use when enabled?",
+      "choices": [
+        {"value": "yellow", "label": "Yellow", "description": "Classic creator-style karaoke."},
+        {"value": "orange", "label": "Orange", "description": "Warmer social highlight."},
+        {"value": "green", "label": "Green", "description": "Alternative accent color."},
+        {"value": "none", "label": "None", "description": "No special highlight."}
+      ]
+    },
+    {
+      "id": "subtitle_outline",
+      "section": "Subtitles",
+      "type": "choice",
+      "prompt": "How strong should the subtitle border be?",
+      "choices": [
+        {"value": "none", "label": "No outline", "description": "Only for very clean backgrounds."},
+        {"value": "thin", "label": "Thin", "description": "Light outline."},
+        {"value": "medium", "label": "Medium", "description": "Balanced edge separation."},
+        {"value": "strong", "label": "Strong", "description": "High contrast for busy frames."}
+      ]
+    },
+    {
+      "id": "subtitle_font",
+      "section": "Subtitles",
+      "type": "choice",
+      "prompt": "Which font preset should the agent target?",
+      "choices": [
+        {"value": "impact-social", "label": "Impact Social", "description": "Heavy creator-style display text."},
+        {"value": "clean-modern", "label": "Clean Modern", "description": "Readable modern sans."},
+        {"value": "cinematic-bold", "label": "Cinematic Bold", "description": "Bold but less shouty."},
+        {"value": "minimal-mono", "label": "Minimal Mono", "description": "Monospace editorial look."}
+      ]
+    },
+    {
+      "id": "subtitle_case",
+      "section": "Subtitles",
+      "type": "choice",
+      "prompt": "What letter casing should subtitles use?",
+      "choices": [
+        {"value": "uppercase", "label": "UPPERCASE", "description": "High-energy social style."},
+        {"value": "title", "label": "Title Case", "description": "Balanced emphasis."},
+        {"value": "natural", "label": "Natural case", "description": "Closer to conversational reading."}
+      ]
+    },
+    {
+      "id": "grade_preset",
+      "section": "Finish",
+      "type": "choice",
+      "prompt": "What grade direction should the agent start from?",
+      "choices": [
+        {"value": "auto", "label": "Auto", "description": "Let the helper decide clip by clip."},
+        {"value": "neutral_punch", "label": "Neutral punch", "description": "Clean contrast and mild energy."},
+        {"value": "warm_cinematic", "label": "Warm cinematic", "description": "Warmer stylized finish."},
+        {"value": "none", "label": "None", "description": "No grade unless requested later."}
+      ]
+    }
+  ]
+}

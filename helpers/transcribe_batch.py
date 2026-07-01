@@ -1,4 +1,4 @@
-"""Batch-transcribe every video in a directory with parallel workers (limited for local execution).
+"""Batch-transcribe every video in a directory with local or ElevenLabs providers.
 
 Walks <videos_dir> for common video extensions, runs faster-whisper on
 each, writes transcripts to <videos_dir>/edit/transcripts/<name>.json.
@@ -10,6 +10,7 @@ Usage:
     python helpers/transcribe_batch.py <videos_dir> --workers 1
     python helpers/transcribe_batch.py <videos_dir> --model large-v3-turbo
     python helpers/transcribe_batch.py <videos_dir> --edit-dir /custom/edit
+    python helpers/transcribe_batch.py <videos_dir> --provider elevenlabs
 """
 
 from __future__ import annotations
@@ -20,7 +21,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-from transcribe import transcribe_one
+from transcribe import DEFAULT_ELEVEN_MODEL, DEFAULT_LOCAL_MODEL, resolve_provider, transcribe_one
 
 
 VIDEO_EXTS = {".mp4", ".MP4", ".mov", ".MOV", ".mkv", ".MKV", ".avi", ".AVI", ".m4v"}
@@ -53,16 +54,26 @@ def main() -> None:
     ap.add_argument(
         "--model",
         type=str,
-        default="large-v3-turbo",
-        help="Model name for faster-whisper (default: large-v3-turbo)",
+        default=None,
+        help="Model name for the selected provider",
+    )
+    ap.add_argument(
+        "--provider",
+        type=str,
+        default=None,
+        choices=["local", "elevenlabs"],
+        help="Transcription provider. Defaults to .env VIBE_VIDEO_TRANSCRIBE_PROVIDER or local.",
     )
     ap.add_argument(
         "--num-speakers",
         type=int,
         default=None,
-        help="Ignored. Kept for CLI compatibility.",
+        help="Optional diarization hint. Used by ElevenLabs; ignored by local faster-whisper.",
     )
     args = ap.parse_args()
+
+    provider = resolve_provider(args.provider)
+    model_name = args.model or (DEFAULT_ELEVEN_MODEL if provider == "elevenlabs" else DEFAULT_LOCAL_MODEL)
 
     videos_dir = args.videos_dir.resolve()
     if not videos_dir.is_dir():
@@ -83,7 +94,7 @@ def main() -> None:
         print("nothing to do")
         return
 
-    print(f"transcribing {len(pending)} files with {args.workers} parallel workers")
+    print(f"transcribing {len(pending)} files with {args.workers} parallel workers via {provider}")
     t0 = time.time()
 
     errors: list[tuple[Path, str]] = []
@@ -93,8 +104,10 @@ def main() -> None:
                 transcribe_one,
                 video=v,
                 edit_dir=edit_dir,
-                model_name=args.model,
+                model_name=model_name,
                 language=args.language,
+                provider=provider,
+                num_speakers=args.num_speakers,
                 verbose=False,
             ): v
             for v in pending

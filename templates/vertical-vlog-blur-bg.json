@@ -1,0 +1,29 @@
+{
+  "id": "vertical-vlog-blur-bg",
+  "extends": "vertical-gameplay-facecam",
+  "label": "Vertical Vlog Blur Background",
+  "description": "Vertical vlog setup with centered subject and blurred background fill, good for handheld vlogs and IRL cuts.",
+  "defaults": {
+    "goal": "best_moments",
+    "split_mode": "multi_clip",
+    "aspect_ratio": "9:16",
+    "layout_style": "center-blur-bg",
+    "facecam_position": "auto",
+    "background_style": "blur-fill",
+    "title_mode": "auto_suggest",
+    "logo_mode": "none",
+    "tracking_enabled": true,
+    "tracking_mode": "vlog",
+    "silence_policy": "visual",
+    "must_preserve_reactions": true,
+    "pacing": "balanced",
+    "subtitle_position": "bottom",
+    "subtitle_grouping": "3",
+    "subtitle_style": "bold",
+    "subtitle_highlight_color": "yellow",
+    "subtitle_outline": "strong",
+    "subtitle_font": "clean-modern",
+    "subtitle_case": "title",
+    "grade_preset": "auto"
+  }
+}
